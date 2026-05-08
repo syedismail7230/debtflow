@@ -1,28 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithGoogle } from '../firebase';
+import { signInWithGoogle, auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Normal email/password auth logic would go here
-    navigate('/');
-  };
-
-  const handleGoogleAuth = async () => {
-    try {
-      const user = await signInWithGoogle();
-      console.log("Logged in as: ", user.displayName);
+  useEffect(() => {
+    if (currentUser) {
       navigate('/');
-    } catch (error) {
-      console.error("Auth error:", error);
-      alert("Authentication failed. Make sure your Firebase domain is whitelisted.");
+    }
+  }, [currentUser, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+      }
+      navigate('/');
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -78,6 +91,7 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {error && <p style={{ color: 'var(--color-red)', fontSize: '14px', textAlign: 'center' }}>{error}</p>}
           <AnimatePresence mode="popLayout">
             {!isLogin && (
               <motion.div 
@@ -87,19 +101,19 @@ const Auth = () => {
                 className="input-group"
               >
                 <div className="input-icon"><User size={20} /></div>
-                <input type="text" placeholder="Full Name" required={!isLogin} className="auth-input" />
+                <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required={!isLogin} className="auth-input" />
               </motion.div>
             )}
           </AnimatePresence>
 
           <div className="input-group">
             <div className="input-icon"><Mail size={20} /></div>
-            <input type="email" placeholder="Email Address" required className="auth-input" />
+            <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required className="auth-input" />
           </div>
 
           <div className="input-group">
             <div className="input-icon"><Lock size={20} /></div>
-            <input type="password" placeholder="Password" required className="auth-input" />
+            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="auth-input" />
           </div>
 
           {isLogin && (

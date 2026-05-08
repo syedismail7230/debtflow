@@ -1,41 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, User, Briefcase, Home, Plus } from 'lucide-react';
+import { ChevronLeft, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import './AllDebts.css';
-
-const allDebtsData = [
-  {
-    id: 'personal',
-    title: 'Personal Loan',
-    icon: <User fill="currentColor" size={24} className="text-dark-green" />,
-    colorClass: 'card-green',
-    iconBgClass: 'icon-bg-green',
-    amount: '$12,500',
-    remaining: '18 Months'
-  },
-  {
-    id: 'business',
-    title: 'Business Loan',
-    icon: <Briefcase fill="currentColor" size={24} className="text-dark-yellow" />,
-    colorClass: 'card-yellow',
-    iconBgClass: 'icon-bg-yellow',
-    amount: '$45,000',
-    remaining: '36 Months'
-  },
-  {
-    id: 'home',
-    title: 'Home Loan',
-    icon: <Home fill="currentColor" size={24} className="text-dark-purple" />,
-    colorClass: 'card-purple',
-    iconBgClass: 'icon-bg-purple',
-    amount: '$350,000',
-    remaining: '15 Years'
-  }
-];
 
 const AllDebts = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [debts, setDebts] = useState([]);
+  const [totalBorrowed, setTotalBorrowed] = useState(0);
+  const [totalLent, setTotalLent] = useState(0);
+
+  useEffect(() => {
+    const fetchDebts = async () => {
+      if (!currentUser) return;
+      const q = query(collection(db, 'loans'), where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      const fetched = [];
+      let borrowed = 0;
+      let lent = 0;
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        fetched.push({ id: doc.id, ...data });
+        if (data.type === 'borrowed') borrowed += data.amount;
+        if (data.type === 'lent') lent += data.amount;
+      });
+      setDebts(fetched);
+      setTotalBorrowed(borrowed);
+      setTotalLent(lent);
+    };
+    fetchDebts();
+  }, [currentUser]);
 
   return (
     <motion.div 
@@ -45,43 +43,51 @@ const AllDebts = () => {
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className="page-content pb-10"
     >
-      {/* Top Bar */}
       <div className="top-bar mb-6">
         <button className="icon-btn-dark" onClick={() => navigate(-1)}>
           <ChevronLeft size={24} />
         </button>
         <div className="text-center">
-          <p className="header-title text-white font-semibold">Monitor Debts</p>
-          <p className="header-sub text-green text-xs">All Active Liabilities</p>
+          <p className="header-title text-white font-semibold">All Debts</p>
         </div>
         <button className="icon-btn-dark" onClick={() => navigate('/calculator')}>
           <Plus size={24} />
         </button>
       </div>
 
-      {/* Debts List */}
+      <div className="stats-row mb-8">
+        <div className="stat-card bg-purple-light text-center">
+          <p className="stat-label text-white opacity-80">Total Borrowed</p>
+          <p className="stat-value text-white">${totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+        </div>
+        <div className="stat-card bg-green-light text-center">
+          <p className="stat-label text-black opacity-80">Total Lent</p>
+          <p className="stat-value text-black">${totalLent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+        </div>
+      </div>
+
       <div className="all-debts-list">
-        {allDebtsData.map((debt) => (
-          <div 
-            key={debt.id} 
-            className={`all-debt-item ${debt.colorClass} bg-pattern`}
-            onClick={() => navigate(`/loan/${debt.id}`)}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="flex-row gap-4">
-              <div className={`debt-icon ${debt.iconBgClass}`}>
-                {debt.icon}
-              </div>
+        {debts.length === 0 ? (
+          <p className="text-muted text-center py-4">No debts found. Click the + button to add one.</p>
+        ) : (
+          debts.map(debt => (
+            <div 
+              key={debt.id} 
+              className={`all-debt-item ${debt.type === 'borrowed' ? 'card-purple' : 'card-green'}`}
+              onClick={() => navigate(`/loan/${debt.id}`)}
+              style={{ cursor: 'pointer' }}
+            >
               <div>
-                <h3 className="all-debt-title">{debt.title}</h3>
-                <p className="all-debt-sub">{debt.remaining} Left</p>
+                <p className="all-debt-title">{debt.title}</p>
+                <p className="all-debt-sub">{debt.group || 'Personal'}</p>
+              </div>
+              <div className="text-right">
+                <p className="all-debt-amount">${debt.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="all-debt-sub">{debt.dateOfPayment || 'No due date'}</p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="all-debt-amount">{debt.amount}</span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </motion.div>
   );

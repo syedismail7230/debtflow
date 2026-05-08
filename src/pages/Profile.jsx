@@ -2,14 +2,26 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, User, Settings, Bell, CreditCard, LogOut, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { logout } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import './Profile.css';
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [activeModal, setActiveModal] = useState(null);
 
   const handleSectionClick = (sectionName) => {
     setActiveModal(sectionName);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -28,16 +40,16 @@ const Profile = () => {
         <div className="text-center">
           <p className="header-title text-white font-semibold">Profile</p>
         </div>
-        <div style={{ width: 48 }}></div> {/* Spacer */}
+        <div style={{ width: 48 }}></div>
       </div>
 
       {/* Profile Info */}
       <div className="profile-info-section">
         <div className="profile-avatar-large">
-          <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=200&h=200" alt="Profile" />
+          <img src={currentUser?.photoURL || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=200&h=200"} alt="Profile" />
         </div>
-        <h2 className="profile-name">Alex Morrison</h2>
-        <p className="profile-email">alex.m@example.com</p>
+        <h2 className="profile-name">{currentUser?.displayName || 'User'}</h2>
+        <p className="profile-email">{currentUser?.email}</p>
         <div className="profile-badge">Pro Member</div>
       </div>
 
@@ -76,7 +88,7 @@ const Profile = () => {
         </div>
       </div>
 
-      <button className="logout-btn mt-8" onClick={() => navigate('/login')}>
+      <button className="logout-btn mt-8" onClick={handleLogout}>
         <LogOut size={20} className="logout-icon" />
         <span>Log Out</span>
       </button>

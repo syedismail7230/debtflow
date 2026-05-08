@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Dashboard from './pages/Dashboard';
 import Calculator from './pages/Calculator';
 import Analytics from './pages/Analytics';
@@ -10,15 +11,17 @@ import LoanCalendar from './pages/LoanCalendar';
 import LoanProfile from './pages/LoanProfile';
 import Auth from './pages/Auth';
 
-function App() {
+const PrivateRoute = ({ children }) => {
+  const { currentUser } = useAuth();
+  return currentUser ? children : <Navigate to="/login" replace />;
+};
+
+function AppContent() {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fun initial loading simulation
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
+    const timer = setTimeout(() => setLoading(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -26,19 +29,9 @@ function App() {
     return (
       <div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
         <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1.2, 1, 1],
-            rotate: [0, 0, 180, 180, 0],
-            borderRadius: ["20%", "20%", "50%", "50%", "20%"]
-          }}
-          transition={{ 
-            duration: 2,
-            ease: "easeInOut",
-            times: [0, 0.2, 0.5, 0.8, 1],
-            repeat: Infinity,
-            repeatDelay: 0.5
-          }}
-          style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--color-purple-light) 0%, var(--color-purple) 100%)', boxShadow: '0 0 40px rgba(139, 92, 246, 0.5)' }}
+          animate={{ scale: [1, 1.2, 1.2, 1, 1], rotate: [0, 0, 180, 180, 0], borderRadius: ["20%", "20%", "50%", "50%", "20%"] }}
+          transition={{ duration: 2, ease: "easeInOut", times: [0, 0.2, 0.5, 0.8, 1], repeat: Infinity, repeatDelay: 0.5 }}
+          style={{ width: 80, height: 80, background: 'var(--color-purple)', boxShadow: '0 0 40px rgba(139, 92, 246, 0.5)' }}
         />
       </div>
     );
@@ -47,20 +40,27 @@ function App() {
   return (
     <div className="app-container">
       <div className="bg-glow"></div>
-      
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Dashboard />} />
           <Route path="/login" element={<Auth />} />
-          <Route path="/calculator" element={<Calculator />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/debts" element={<AllDebts />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/calendar" element={<LoanCalendar />} />
-          <Route path="/loan/:id" element={<LoanProfile />} />
+          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/calculator" element={<PrivateRoute><Calculator /></PrivateRoute>} />
+          <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+          <Route path="/debts" element={<PrivateRoute><AllDebts /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/calendar" element={<PrivateRoute><LoanCalendar /></PrivateRoute>} />
+          <Route path="/loan/:id" element={<PrivateRoute><LoanProfile /></PrivateRoute>} />
         </Routes>
       </AnimatePresence>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
