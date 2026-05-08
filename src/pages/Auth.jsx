@@ -39,6 +39,15 @@ const Auth = () => {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    try {
+      await signInWithGoogle();
+      navigate('/');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const pageVariants = {
     initial: { opacity: 0, scale: 0.96, y: 15 },
     animate: { opacity: 1, scale: 1, y: 0 },

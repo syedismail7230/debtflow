@@ -5,7 +5,7 @@ import './Navigation.css';
 
 const Navigation = () => {
   return (
-    <nav className="bottom-nav glass-panel">
+    <nav className="bottom-nav">
       <div className="nav-items">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <LayoutDashboard size={24} />

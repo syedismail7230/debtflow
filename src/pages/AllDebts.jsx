@@ -56,13 +56,13 @@ const AllDebts = () => {
       </div>
 
       <div className="stats-row mb-8">
-        <div className="stat-card bg-purple-light text-center">
+        <div className="stat-card bg-purple-glass text-center">
           <p className="stat-label text-white opacity-80">Total Borrowed</p>
-          <p className="stat-value text-white">${totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="stat-value text-purple-light">${totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="stat-card bg-green-light text-center">
-          <p className="stat-label text-black opacity-80">Total Lent</p>
-          <p className="stat-value text-black">${totalLent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+        <div className="stat-card bg-green-glass text-center">
+          <p className="stat-label text-white opacity-80">Total Lent</p>
+          <p className="stat-value text-green-light">${totalLent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
 

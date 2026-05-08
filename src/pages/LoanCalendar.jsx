@@ -2,17 +2,46 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Calendar as CalIcon, Home, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import './LoanCalendar.css';
 
 const LoanCalendar = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(14);
 
-  const upcomingPayments = [
-    { id: 1, date: 10, title: 'Car Loan EMI', vendor: 'Chase Auto', amount: '$350', status: 'Upcoming', type: 'car' },
-    { id: 2, date: 14, title: 'Home Loan EMI', vendor: 'Wells Fargo', amount: '$1,200', status: 'Due Today', type: 'home' },
-    { id: 3, date: 23, title: 'Business Loan', vendor: 'Bank of America', amount: '$850', status: 'Upcoming', type: 'business' },
-  ];
+  const { currentUser } = useAuth();
+  const [upcomingPayments, setUpcomingPayments] = useState([]);
+
+  React.useEffect(() => {
+    const fetchPayments = async () => {
+      if (!currentUser) return;
+      const q = query(collection(db, 'loans'), where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      const fetched = [];
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.dateOfPayment) {
+          const dateParts = data.dateOfPayment.split('-');
+          if (dateParts.length === 3) {
+            const day = parseInt(dateParts[2], 10);
+            fetched.push({
+              id: doc.id,
+              date: day,
+              title: data.title,
+              vendor: data.vendor || 'Unknown',
+              amount: `$${data.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+              status: 'Upcoming',
+              type: data.group ? data.group.toLowerCase() : 'other'
+            });
+          }
+        }
+      });
+      setUpcomingPayments(fetched);
+    };
+    fetchPayments();
+  }, [currentUser]);
 
   const renderGrid = () => {
     const days = [];
