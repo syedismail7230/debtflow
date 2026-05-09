@@ -1,1 +1,8 @@
-[]
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.web.debtflow_9c6be.twa",
+    "sha256_cert_fingerprints": ["E3:6B:F1:0C:A6:E4:44:85:41:28:8E:40:29:5A:4D:16:77:6B:A2:B3:A7:20:F8:E4:C5:D7:AB:16:82:5D:1F:B8"]
+  }
+}]
