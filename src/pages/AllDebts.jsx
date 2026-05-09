@@ -37,9 +37,9 @@ const AllDebts = () => {
         if (data.type === 'lent') lent += data.amount;
       }
     });
-    // Sort: high → medium → low → none
-    const order = { high: 0, medium: 1, low: 2, null: 3, undefined: 3 };
-    fetched.sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
+    // Sort: high → medium → low → none/null/undefined
+    const priorityRank = (p) => p === 'high' ? 0 : p === 'medium' ? 1 : p === 'low' ? 2 : 3;
+    fetched.sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority));
     setDebts(fetched);
     setTotalBorrowed(borrowed);
     setTotalLent(lent);

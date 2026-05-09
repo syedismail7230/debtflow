@@ -15,6 +15,7 @@ const LoanProfile = () => {
   const [loan, setLoan] = useState(null);
   const [history, setHistory] = useState([]);
   const [showPartialModal, setShowPartialModal] = useState(false);
+  const [borrowMode, setBorrowMode] = useState(false);
   const [partialAmount, setPartialAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -52,27 +53,30 @@ const LoanProfile = () => {
     const amt = parseFloat(partialAmount);
     if (!amt || amt <= 0) return alert('Please enter a valid amount greater than 0');
     setIsProcessing(true);
-    
     try {
       await addDoc(collection(db, 'transactions'), {
         loanId: id,
         userId: currentUser.uid,
         amount: amt,
-        type: 'repay',
-        title: 'I repaid part',
+        type: borrowMode ? 'borrow' : 'repay',
+        title: borrowMode ? 'Borrowed more' : 'I repaid part',
         date: new Date().toLocaleDateString(),
         createdAt: new Date()
       });
 
-      const newBalance = loan.amount - amt;
-      await updateDoc(doc(db, 'loans', id), { amount: Math.max(0, newBalance) });
+      const newBalance = borrowMode ? loan.amount + amt : loan.amount - amt;
+      await updateDoc(doc(db, 'loans', id), {
+        amount: Math.max(0, newBalance),
+        ...(borrowMode ? { originalAmount: (loan.originalAmount || loan.amount) + amt } : {})
+      });
 
-      if (newBalance <= 0) {
+      if (!borrowMode && newBalance <= 0) {
         navigate('/celebration', { state: { loanName: loan.title } });
       } else {
         await fetchLoanData();
         setShowPartialModal(false);
         setPartialAmount('');
+        setBorrowMode(false);
       }
     } catch (err) {
       console.error(err);
@@ -120,7 +124,7 @@ const LoanProfile = () => {
             </div>
             
             <div className="action-circle-group">
-              <button className="action-circle-btn">
+              <button className="action-circle-btn" onClick={() => { setPartialAmount(''); setBorrowMode(true); setShowPartialModal(true); }}>
                 <Plus size={24} color="white" />
               </button>
               <span>Borrow<br/>more</span>
@@ -206,12 +210,16 @@ const LoanProfile = () => {
             >
               <div className="modal-handle"></div>
               <div className="flex-between w-full mb-2">
-                <h3 className="text-white text-xl font-bold">Repayment</h3>
+                <h3 className="text-white text-xl font-bold">{borrowMode ? 'Borrow More' : 'Repayment'}</h3>
                 <button className="icon-btn-transparent" onClick={() => setShowPartialModal(false)}>
                   <X size={20} color="white" />
                 </button>
               </div>
-              <p className="text-muted text-sm mb-6">Enter the amount you wish to repay towards your {currencySymbol}{loan.amount.toLocaleString()} balance.</p>
+              <p className="text-muted text-sm mb-6">
+                {borrowMode
+                  ? `Add to your ${currencySymbol}${loan.amount.toLocaleString()} balance.`
+                  : `Enter the amount you wish to repay towards your ${currencySymbol}${loan.amount.toLocaleString()} balance.`}
+              </p>
               
               <div className="amount-input-wrapper mb-6">
                 <span className="currency-symbol">{currencySymbol}</span>
@@ -225,7 +233,7 @@ const LoanProfile = () => {
                 className={`confirm-payment-btn ${partialAmount ? 'active' : ''}`}
                 onClick={handleConfirmPayment} disabled={!partialAmount || isProcessing}
               >
-                {isProcessing ? 'Processing...' : 'Confirm Payment'}
+                {isProcessing ? 'Processing...' : borrowMode ? 'Confirm Borrow' : 'Confirm Payment'}
               </button>
             </motion.div>
           </>

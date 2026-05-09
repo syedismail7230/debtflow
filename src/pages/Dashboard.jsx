@@ -119,8 +119,9 @@ const Dashboard = () => {
           .filter(l => l.amount > 0)
           .map(l => {
             let daysUntilDue = Infinity;
-            if (l.dateOfPayment) {
-              const due = new Date(l.dateOfPayment);
+            const dueDateStr = l.lastDateToClear || l.dateOfPayment;
+            if (dueDateStr) {
+              const due = new Date(dueDateStr);
               daysUntilDue = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
             }
             const urgencyScore = daysUntilDue === Infinity 
