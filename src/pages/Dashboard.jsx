@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { ArrowUpRight, Menu, User, Briefcase, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { checkAndNotifyOverdueLoans } from '../hooks/usePushNotifications';
+import { checkAndSendReminderEmails } from '../hooks/useEmailReminder';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -13,6 +15,7 @@ const Dashboard = () => {
   const [loans, setLoans] = useState([]);
   const [totalDebt, setTotalDebt] = useState(0);
   const [expandedIndex, setExpandedIndex] = useState(0);
+  const [emiToast, setEmiToast] = useState([]);  // [{title, amount}]
 
   useEffect(() => {
     const fetchLoans = async () => {
@@ -31,12 +34,81 @@ const Dashboard = () => {
         });
         setLoans(fetchedLoans);
         setTotalDebt(total);
+
+        // Push notification check (if permission granted)
+        if (fetchedLoans.length > 0) {
+          checkAndNotifyOverdueLoans(fetchedLoans, currencySymbol);
+        }
+
+        // Email reminder check (if user enabled + EmailJS configured)
+        if (fetchedLoans.length > 0 && currentUser.email) {
+          // Only runs if emailReminders pref is saved in Firestore
+          checkAndSendReminderEmails(
+            fetchedLoans,
+            currentUser.email,
+            currentUser.displayName || '',
+            currencySymbol
+          );
+        }
       } catch (e) {
         console.error(e);
       }
     };
     fetchLoans();
   }, [currentUser]);
+
+  // ─── EMI Auto-deduction Scheduler ───────────────────────────────────────────
+  useEffect(() => {
+    const runEmiScheduler = async () => {
+      if (!currentUser) return;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      try {
+        const q = query(
+          collection(db, 'loans'),
+          where('userId', '==', currentUser.uid),
+          where('emiEnabled', '==', true)
+        );
+        const snap = await getDocs(q);
+        const deducted = [];
+        for (const d of snap.docs) {
+          const loan = { id: d.id, ...d.data() };
+          if (!loan.nextEmiDate || loan.amount <= 0 || !loan.emiAmount) continue;
+          const nextEmi = new Date(loan.nextEmiDate);
+          nextEmi.setHours(0, 0, 0, 0);
+          if (nextEmi <= today) {
+            const deduction = Math.min(loan.emiAmount, loan.amount);
+            const newBalance = loan.amount - deduction;
+            // Record transaction
+            await addDoc(collection(db, 'transactions'), {
+              loanId: loan.id,
+              userId: currentUser.uid,
+              amount: deduction,
+              type: 'repay',
+              title: `Auto EMI — ${loan.title}`,
+              date: today.toLocaleDateString(),
+              createdAt: new Date()
+            });
+            // Calculate next EMI date
+            const nextDate = new Date(nextEmi);
+            loan.emiFrequency === 'weekly'
+              ? nextDate.setDate(nextDate.getDate() + 7)
+              : nextDate.setMonth(nextDate.getMonth() + 1);
+            await updateDoc(doc(db, 'loans', loan.id), {
+              amount: Math.max(0, newBalance),
+              nextEmiDate: nextDate.toISOString().split('T')[0]
+            });
+            deducted.push({ title: loan.title, amount: deduction });
+          }
+        }
+        if (deducted.length > 0) setEmiToast(deducted);
+      } catch (e) {
+        console.error('EMI scheduler error:', e);
+      }
+    };
+    runEmiScheduler();
+  }, [currentUser]);
+  // ────────────────────────────────────────────────────────────────────────────
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -80,6 +152,30 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* EMI Auto-deduction Toast */}
+      {emiToast.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(168,85,247,0.1))',
+            border: '1px solid rgba(139,92,246,0.3)', borderRadius: '18px',
+            padding: '14px 16px', marginBottom: '16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          }}
+        >
+          <div>
+            <p style={{ color: 'white', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}>
+              ⚡ {emiToast.length} EMI{emiToast.length > 1 ? 's' : ''} Auto-deducted
+            </p>
+            {emiToast.map((e, i) => (
+              <p key={i} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
+                {e.title} · {currencySymbol}{e.amount.toLocaleString()}
+              </p>
+            ))}
+          </div>
+          <button onClick={() => setEmiToast([])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', fontSize: '18px' }}>×</button>
+        </motion.div>
+      )}
       <div className="header-text mb-8">
         <h1 style={{ fontSize: '1.9rem' }}>{getGreeting()},<br/>{firstName}! 👋</h1>
         <p style={{ marginTop: '6px', fontSize: '14px', color: 'var(--color-green)', fontWeight: '500', lineHeight: 1.4 }}>

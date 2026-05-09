@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithGoogle, auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithGoogle, auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
@@ -16,6 +17,18 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) return setError('Enter your email address first, then click Forgot Password.');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -32,6 +45,12 @@ const Auth = () => {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
+        // Write to Firestore so admin can list this user
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          displayName: name,
+          email: email,
+          createdAt: new Date().toISOString()
+        }, { merge: true });
       }
       navigate('/');
     } catch (err) {
@@ -41,7 +60,15 @@ const Auth = () => {
 
   const handleGoogleAuth = async () => {
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      // Write to Firestore for admin listing
+      if (result?.user) {
+        await setDoc(doc(db, 'users', result.user.uid), {
+          displayName: result.user.displayName || '',
+          email: result.user.email || '',
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      }
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -127,7 +154,10 @@ const Auth = () => {
 
           {isLogin && (
             <div className="forgot-password">
-              <span>Forgot password?</span>
+              {resetSent
+                ? <span style={{ color: 'var(--color-green)', fontSize: '13px' }}>✅ Reset email sent! Check your inbox.</span>
+                : <span style={{ cursor: 'pointer', color: 'var(--color-purple)' }} onClick={handleForgotPassword}>Forgot password?</span>
+              }
             </div>
           )}
 
@@ -151,7 +181,10 @@ const Auth = () => {
       </div>
       
       <p className="auth-footer text-muted">
-        By continuing, you agree to our Terms of Service & Privacy Policy.
+        By continuing, you agree to our{' '}
+        <span onClick={() => navigate('/terms')} style={{ color: '#8b5cf6', cursor: 'pointer', textDecoration: 'underline' }}>Terms of Service</span>
+        {' & '}
+        <span onClick={() => navigate('/privacy')} style={{ color: '#8b5cf6', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy</span>.
       </p>
     </motion.div>
   );

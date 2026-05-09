@@ -20,6 +20,9 @@ const Calculator = () => {
   const [lastDateToClear, setLastDateToClear] = useState('');
   const [reminder, setReminder] = useState(false);
   const [group, setGroup] = useState('Personal');
+  const [emiEnabled, setEmiEnabled] = useState(false);
+  const [emiAmount, setEmiAmount] = useState('');
+  const [emiFrequency, setEmiFrequency] = useState('monthly');
   const [isSaving, setIsSaving] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const groupRef = useRef(null);
@@ -48,6 +51,14 @@ const Calculator = () => {
         lastDateToClear,
         reminder,
         group,
+        emiEnabled,
+        emiAmount: emiEnabled ? parseFloat(emiAmount) : 0,
+        emiFrequency: emiEnabled ? emiFrequency : null,
+        nextEmiDate: emiEnabled && borrowedDate ? (() => {
+          const d = new Date(borrowedDate);
+          emiFrequency === 'weekly' ? d.setDate(d.getDate() + 7) : d.setMonth(d.getMonth() + 1);
+          return d.toISOString().split('T')[0];
+        })() : null,
         createdAt: serverTimestamp()
       });
       navigate('/debts');
@@ -137,6 +148,45 @@ const Calculator = () => {
             <div className="switch-knob"></div>
           </div>
         </div>
+
+        {/* EMI Auto-deduction */}
+        <div className="form-group row-between">
+          <div>
+            <label className="form-label mb-1">Auto EMI Deduction</label>
+            <p className="form-sub-label">Auto-deduct EMI on schedule</p>
+          </div>
+          <div className={`switch ${emiEnabled ? 'active' : ''}`} onClick={() => setEmiEnabled(!emiEnabled)}>
+            <div className="switch-knob"></div>
+          </div>
+        </div>
+
+        {emiEnabled && (
+          <>
+            <div className="form-group">
+              <label className="form-label">EMI Amount ({currencySymbol})</label>
+              <input
+                type="number" className="form-input"
+                placeholder="e.g. 5000"
+                value={emiAmount} onChange={e => setEmiAmount(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">EMI Frequency</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {['monthly', 'weekly'].map(freq => (
+                  <button key={freq} onClick={() => setEmiFrequency(freq)}
+                    style={{
+                      flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer',
+                      fontWeight: '600', fontSize: '14px', textTransform: 'capitalize',
+                      background: emiFrequency === freq ? 'var(--color-purple)' : 'var(--bg-main)',
+                      color: 'white', transition: 'background 0.2s'
+                    }}
+                  >{freq}</button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="form-group" ref={groupRef} style={{ position: 'relative' }}>
           <label className="form-label">Group</label>

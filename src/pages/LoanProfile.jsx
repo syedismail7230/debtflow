@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import useRazorpay from '../hooks/useRazorpay';
 import './LoanProfile.css';
 
 const LoanProfile = () => {
@@ -18,6 +19,8 @@ const LoanProfile = () => {
   const [borrowMode, setBorrowMode] = useState(false);
   const [partialAmount, setPartialAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const openRazorpay = useRazorpay();
 
   const fetchLoanData = async () => {
     if (!currentUser || !id) return;
@@ -48,42 +51,77 @@ const LoanProfile = () => {
     fetchLoanData();
   }, [id, currentUser]);
 
+  const recordTransaction = async (amt, razorpayId = null) => {
+    await addDoc(collection(db, 'transactions'), {
+      loanId: id,
+      userId: currentUser.uid,
+      amount: amt,
+      type: borrowMode ? 'borrow' : 'repay',
+      title: borrowMode ? 'Borrowed more' : 'Repayment via Razorpay',
+      razorpayPaymentId: razorpayId || null,
+      date: new Date().toLocaleDateString(),
+      createdAt: new Date()
+    });
+    const newBalance = borrowMode ? loan.amount + amt : loan.amount - amt;
+    await updateDoc(doc(db, 'loans', id), {
+      amount: Math.max(0, newBalance),
+      ...(borrowMode ? { originalAmount: (loan.originalAmount || loan.amount) + amt } : {})
+    });
+    return newBalance;
+  };
+
   const handleConfirmPayment = async () => {
     if (!partialAmount || isProcessing || !loan) return;
     const amt = parseFloat(partialAmount);
-    if (!amt || amt <= 0) return alert('Please enter a valid amount greater than 0');
-    setIsProcessing(true);
-    try {
-      await addDoc(collection(db, 'transactions'), {
-        loanId: id,
-        userId: currentUser.uid,
-        amount: amt,
-        type: borrowMode ? 'borrow' : 'repay',
-        title: borrowMode ? 'Borrowed more' : 'I repaid part',
-        date: new Date().toLocaleDateString(),
-        createdAt: new Date()
-      });
+    if (!amt || amt <= 0) return setPaymentError('Please enter a valid amount greater than 0.');
+    setPaymentError('');
 
-      const newBalance = borrowMode ? loan.amount + amt : loan.amount - amt;
-      await updateDoc(doc(db, 'loans', id), {
-        amount: Math.max(0, newBalance),
-        ...(borrowMode ? { originalAmount: (loan.originalAmount || loan.amount) + amt } : {})
-      });
-
-      if (!borrowMode && newBalance <= 0) {
-        navigate('/celebration', { state: { loanName: loan.title } });
-      } else {
+    if (borrowMode) {
+      // Borrow more — no payment gateway needed
+      setIsProcessing(true);
+      try {
+        await recordTransaction(amt);
         await fetchLoanData();
         setShowPartialModal(false);
         setPartialAmount('');
         setBorrowMode(false);
+      } catch (err) {
+        console.error(err);
+        setPaymentError('Failed to record. Try again.');
+      } finally {
+        setIsProcessing(false);
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to process payment');
-    } finally {
-      setIsProcessing(false);
+      return;
     }
+
+    // Repayment — go through Razorpay
+    openRazorpay({
+      amount: amt,
+      loanTitle: loan.title,
+      userName: currentUser.displayName || '',
+      userEmail: currentUser.email || '',
+      onSuccess: async (razorpayId) => {
+        setIsProcessing(true);
+        try {
+          const newBalance = await recordTransaction(amt, razorpayId);
+          if (newBalance <= 0) {
+            navigate('/celebration', { state: { loanName: loan.title } });
+          } else {
+            await fetchLoanData();
+            setShowPartialModal(false);
+            setPartialAmount('');
+          }
+        } catch (err) {
+          console.error(err);
+          setPaymentError('Payment received but failed to update. Contact support.');
+        } finally {
+          setIsProcessing(false);
+        }
+      },
+      onFailure: (reason) => {
+        setPaymentError(`Payment failed: ${reason}`);
+      }
+    });
   };
 
   if (!loan) {
@@ -229,12 +267,21 @@ const LoanProfile = () => {
                 />
               </div>
               
+              {paymentError && (
+                <p style={{ color: '#ef4444', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{paymentError}</p>
+              )}
+
               <button 
                 className={`confirm-payment-btn ${partialAmount ? 'active' : ''}`}
                 onClick={handleConfirmPayment} disabled={!partialAmount || isProcessing}
               >
-                {isProcessing ? 'Processing...' : borrowMode ? 'Confirm Borrow' : 'Confirm Payment'}
+                {isProcessing ? 'Processing...' : borrowMode ? 'Confirm Borrow' : '🔒 Pay via Razorpay'}
               </button>
+              {!borrowMode && (
+                <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px' }}>
+                  Secured by Razorpay · 256-bit SSL
+                </p>
+              )}
             </motion.div>
           </>
         )}
