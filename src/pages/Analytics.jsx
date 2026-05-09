@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ArrowUpRight, Menu, Home, Briefcase, Download, X, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ArrowUpRight, Menu, Home, Briefcase, Download, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -42,7 +42,11 @@ const Analytics = () => {
       const txQs = await getDocs(txQ);
       const txs = [];
       txQs.forEach(d => txs.push({ id: d.id, ...d.data() }));
-      txs.sort((a, b) => b.createdAt - a.createdAt);
+      txs.sort((a, b) => {
+        const aMs = a.createdAt?.toMillis?.() ?? 0;
+        const bMs = b.createdAt?.toMillis?.() ?? 0;
+        return bMs - aMs;
+      });
       
       // Generate real-time chart data from loans and transactions
       let dynamicChartData = [];

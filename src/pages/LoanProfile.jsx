@@ -29,7 +29,11 @@ const LoanProfile = () => {
         const qs = await getDocs(q);
         const txs = [];
         qs.forEach(d => txs.push({ id: d.id, ...d.data() }));
-        txs.sort((a, b) => b.createdAt - a.createdAt);
+        txs.sort((a, b) => {
+          const aMs = a.createdAt?.toMillis?.() ?? 0;
+          const bMs = b.createdAt?.toMillis?.() ?? 0;
+          return bMs - aMs;
+        });
         setHistory(txs);
       } else {
         navigate('/');
@@ -45,8 +49,9 @@ const LoanProfile = () => {
 
   const handleConfirmPayment = async () => {
     if (!partialAmount || isProcessing || !loan) return;
-    setIsProcessing(true);
     const amt = parseFloat(partialAmount);
+    if (!amt || amt <= 0) return alert('Please enter a valid amount greater than 0');
+    setIsProcessing(true);
     
     try {
       await addDoc(collection(db, 'transactions'), {
@@ -72,8 +77,9 @@ const LoanProfile = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to process payment');
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   if (!loan) {
@@ -135,8 +141,14 @@ const LoanProfile = () => {
             <span className="detail-value text-muted">{loan.vendor || 'N/A'}</span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Date of payment</span>
-            <span className="detail-value">{loan.dateOfPayment || 'No date'}</span>
+            <span className="detail-label">Borrowed On</span>
+            <span className="detail-value">{loan.borrowedDate || 'N/A'}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Last Date to Clear</span>
+            <span className="detail-value" style={{ color: loan.lastDateToClear ? 'var(--color-green)' : 'var(--text-muted)' }}>
+              {loan.lastDateToClear || 'No deadline set'}
+            </span>
           </div>
           <div className="detail-row">
             <span className="detail-label">Reminder</span>
