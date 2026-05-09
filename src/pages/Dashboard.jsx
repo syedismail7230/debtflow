@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import Navigation from '../components/Navigation';
 import { ArrowUpRight, Menu, User, Briefcase, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
@@ -39,14 +38,38 @@ const Dashboard = () => {
     fetchLoans();
   }, [currentUser]);
 
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    if (h < 21) return 'Good evening';
+    return 'Good night';
+  };
+
+  const firstName = currentUser?.displayName?.split(' ')[0] || 'there';
+
+  const motivations = [
+    "Every payment brings you closer to freedom. 🚀",
+    "Small steps today, debt-free tomorrow. 💪",
+    "Your future self thanks you for paying today. 🙌",
+    "Crush that debt — one payment at a time! 🔥",
+    "Financial freedom is just ahead. Keep going! ⚡",
+    "You're stronger than your debt. Prove it today! 💎",
+    "Progress over perfection — keep paying! 🌟",
+    "One less debt is one more dream within reach. ✨",
+    "Stay consistent. Debt doesn't stand a chance! 🏆",
+    "The best time to pay is now. You've got this! 💰",
+  ];
+  const motivation = motivations[new Date().getDate() % motivations.length];
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.96, y: 15 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: -15 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="page-content pb-10"
-      style={{ paddingBottom: '100px' }}
+      className="page-content"
+      style={{ paddingBottom: '200px' }}
     >
       <div className="top-bar">
         <div className="profile-img" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
@@ -58,8 +81,10 @@ const Dashboard = () => {
       </div>
 
       <div className="header-text mb-8">
-        <h1>Smart Debt<br/>Solutions</h1>
-        <p>Empower your financial success.</p>
+        <h1 style={{ fontSize: '1.9rem' }}>{getGreeting()},<br/>{firstName}! 👋</h1>
+        <p style={{ marginTop: '6px', fontSize: '14px', color: 'var(--color-green)', fontWeight: '500', lineHeight: 1.4 }}>
+          {motivation}
+        </p>
       </div>
 
       <div className="top-cards-grid mb-8">
@@ -80,8 +105,8 @@ const Dashboard = () => {
             <div className="arrow-btn-small" style={{ color: 'black' }}><ArrowUpRight size={16} /></div>
           </div>
           <div className="card-bottom">
-            <span className="card-label" style={{ color: 'white' }}>Debt Plan</span>
-            <span className="card-value" style={{ fontSize: '1.4rem' }}>Calculate<br/>EMI</span>
+            <span className="card-label" style={{ color: 'white' }}>Quick Add</span>
+            <span className="card-value" style={{ fontSize: '1.4rem' }}>Add<br/>Debt</span>
           </div>
           <div className="orange-card-shape"></div>
         </div>
@@ -121,69 +146,83 @@ const Dashboard = () => {
         return (
           <div className="mb-8" style={{ cursor: 'pointer' }} onClick={() => navigate(`/loan/${priority.id}`)}>
             <div className="section-header mb-4">
-              <h3 className="text-white" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🚨 Priority Debt
-              </h3>
+              <h3 className="text-white">⚡ Priority Alert</h3>
             </div>
-            <div className="priority-card" style={{
-              background: `linear-gradient(135deg, ${isOverdue ? 'rgba(239,68,68,0.15)' : isUrgent ? 'rgba(249,115,22,0.15)' : 'rgba(139,92,246,0.15)'} 0%, rgba(255,255,255,0.03) 100%)`,
-              border: `1px solid ${badgeColor}33`,
-              borderRadius: '24px',
+            <div style={{
+              background: 'var(--bg-card)',
+              borderRadius: '28px',
               padding: '20px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px',
+              gap: '14px',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.05)'
             }}>
+              {/* colored glow accent top-right */}
               <div style={{ 
-                position: 'absolute', top: 0, right: 0, width: '120px', height: '120px',
-                background: `radial-gradient(circle, ${badgeColor}20 0%, transparent 70%)`,
-                borderRadius: '50%', transform: 'translate(30%, -30%)'
+                position: 'absolute', top: '-30px', right: '-30px',
+                width: '120px', height: '120px',
+                background: `radial-gradient(circle, ${badgeColor}30 0%, transparent 70%)`,
+                borderRadius: '50%', pointerEvents: 'none'
               }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 1 }}>
-                <div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '4px' }}>Highest Priority</p>
-                  <h3 style={{ color: 'white', fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.5px' }}>{priority.title}</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>{priority.group || 'Personal'}</p>
+
+              {/* top row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px', height: '46px', borderRadius: '16px',
+                    background: `${badgeColor}22`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '22px', flexShrink: 0
+                  }}>
+                    {isOverdue ? '🔴' : isUrgent ? '🟠' : '🟣'}
+                  </div>
+                  <div>
+                    <p style={{ color: 'white', fontSize: '1rem', fontWeight: '700', marginBottom: '2px' }}>{priority.title}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{priority.group || 'Personal'}</p>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right', zIndex: 2 }}>
-                  <p style={{ color: 'white', fontSize: '1.6rem', fontWeight: '800', letterSpacing: '-1px' }}>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ color: 'white', fontSize: '1.3rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
                     {currencySymbol}{priority.amount.toLocaleString()}
                   </p>
                   <span style={{
-                    display: 'inline-block', marginTop: '6px',
+                    display: 'inline-block', marginTop: '5px',
                     background: badgeColor, color: 'white',
-                    fontSize: '11px', fontWeight: '700',
-                    padding: '4px 10px', borderRadius: '20px',
-                    letterSpacing: '0.3px'
+                    fontSize: '10px', fontWeight: '700',
+                    padding: '3px 9px', borderRadius: '20px'
                   }}>
                     {badgeText}
                   </span>
                 </div>
               </div>
-              <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+
+              {/* progress bar */}
+              <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
                 <div style={{
-                  height: '100%', borderRadius: '2px',
-                  background: `linear-gradient(to right, ${badgeColor}, ${badgeColor}88)`,
+                  height: '100%', borderRadius: '3px',
+                  background: `linear-gradient(90deg, ${badgeColor}, ${badgeColor}99)`,
                   width: priority.originalAmount 
                     ? `${Math.min(100, ((priority.originalAmount - priority.amount) / priority.originalAmount) * 100)}%`
-                    : '0%',
+                    : '5%',
                   transition: 'width 1s ease'
                 }} />
               </div>
+
+              {/* bottom row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                   {priority.originalAmount 
-                    ? `${Math.round(((priority.originalAmount - priority.amount) / priority.originalAmount) * 100)}% repaid`
-                    : 'Tap to view details'}
+                    ? `${Math.round(((priority.originalAmount - priority.amount) / priority.originalAmount) * 100)}% cleared`
+                    : 'Tap to repay'}
                 </p>
                 <div style={{
-                  background: badgeColor,
-                  borderRadius: '50%', width: '32px', height: '32px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  background: badgeColor, borderRadius: '12px',
+                  padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '4px'
                 }}>
-                  <span style={{ color: 'white', fontSize: '16px', lineHeight: 1 }}>→</span>
+                  <span style={{ color: 'white', fontSize: '12px', fontWeight: '600' }}>Pay Now</span>
+                  <span style={{ color: 'white', fontSize: '14px' }}>→</span>
                 </div>
               </div>
             </div>
@@ -201,83 +240,104 @@ const Dashboard = () => {
           <p className="text-muted text-center py-4">No active debts found.</p>
         ) : (
           loans.slice(0, 3).map((loan, index) => {
-            const colors = [
-              { bg: 'card-green', iconBg: 'icon-bg-green', text: 'text-dark-green', icon: <User size={24} className="text-dark-green" /> },
-              { bg: 'card-yellow', iconBg: 'icon-bg-yellow', text: 'text-dark-yellow', icon: <Briefcase size={24} className="text-dark-yellow" /> },
-              { bg: 'card-purple', iconBg: 'icon-bg-purple', text: 'text-dark-purple', icon: <Home size={24} className="text-dark-purple" /> }
+            const colorSchemes = [
+              { bg: 'card-green',  iconBg: 'icon-bg-green',  textClass: 'text-dark-green'  },
+              { bg: 'card-yellow', iconBg: 'icon-bg-yellow', textClass: 'text-dark-yellow' },
+              { bg: 'card-purple', iconBg: 'icon-bg-purple', textClass: 'text-dark-purple' },
             ];
-            const color = colors[index % 3];
+            const color = colorSchemes[index % 3];
 
-            const isPurple = color.bg === 'card-purple';
-            const titleColor = 'text-white'; // The screenshots show white text on all expanded cards!
-
-            // Demo details based on index
-            const addresses = [
-              "124 Personal St.\nChicago, Illinois 60601",
-              "456 Business Blvd.\nNew York, NY 10001",
-              "2972 Westheimer Rd.\nSanta Ana, Illinois 85486"
-            ];
-            const images = [
-              "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?fit=crop&w=400&h=200", // Person
-              "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?fit=crop&w=400&h=200", // Business
-              "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?fit=crop&w=400&h=200"  // Home
-            ];
-
-            if (index === expandedIndex) {
+            // SVG illustrations per group
+            const getIllustration = (group, type) => {
+              const g = (group || '').toLowerCase();
+              const svgProps = { width: 90, height: 90, viewBox: '0 0 64 64', fill: 'none', opacity: 0.22 };
+              if (g === 'business') return (
+                <svg {...svgProps}><rect x="8" y="20" width="48" height="32" rx="4" fill="white"/><rect x="20" y="12" width="24" height="12" rx="2" fill="white"/><rect x="14" y="30" width="8" height="8" rx="1" fill="rgba(0,0,0,0.3)"/><rect x="28" y="30" width="8" height="8" rx="1" fill="rgba(0,0,0,0.3)"/><rect x="42" y="30" width="8" height="8" rx="1" fill="rgba(0,0,0,0.3)"/></svg>
+              );
+              if (g === 'family') return (
+                <svg {...svgProps}><circle cx="22" cy="20" r="8" fill="white"/><circle cx="42" cy="20" r="8" fill="white"/><path d="M6 50c0-8.8 7.2-16 16-16h20c8.8 0 16 7.2 16 16" stroke="white" strokeWidth="4" strokeLinecap="round"/></svg>
+              );
+              if (type === 'lent') return (
+                <svg {...svgProps}><path d="M32 8v48M8 32h48" stroke="white" strokeWidth="5" strokeLinecap="round"/><circle cx="32" cy="32" r="22" stroke="white" strokeWidth="4"/></svg>
+              );
+              // default: personal / home
               return (
-                <motion.div 
+                <svg {...svgProps}><path d="M8 28L32 8l24 20v28H40V40H24v16H8V28z" fill="white"/><rect x="26" y="40" width="12" height="16" rx="2" fill="rgba(0,0,0,0.2)"/></svg>
+              );
+            };
+
+            // Icon per group
+            const getIcon = (group) => {
+              const g = (group || '').toLowerCase();
+              if (g === 'business') return <Briefcase size={22} />;
+              if (g === 'family') return <User size={22} />;
+              return <Home size={22} />;
+            };
+
+            const isExpanded = index === expandedIndex;
+
+            if (isExpanded) {
+              return (
+                <motion.div
                   layout
-                  className={`debt-item-large ${color.bg} overlap-${index}`} 
-                  key={loan.id} 
+                  key={loan.id}
+                  className={`debt-item-large ${color.bg} overlap-${index}`}
                   onClick={() => setExpandedIndex(index)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', minHeight: '160px' }}
                 >
                   <motion.div layout="position" className="debt-large-content">
                     <div className={`debt-icon ${color.iconBg} mb-4`}>
-                      {color.icon}
+                      {getIcon(loan.group)}
                     </div>
-                    <h3 className={titleColor} style={{ wordBreak: 'break-word', maxWidth: '140px' }}>
-                      {loan.title.split(' ').map((word, i) => <React.Fragment key={i}>{word}<br/></React.Fragment>)}
+                    <h3 className="text-white" style={{ fontSize: '1.6rem', letterSpacing: '-0.5px', maxWidth: '160px', wordBreak: 'break-word' }}>
+                      {loan.title}
                     </h3>
-                    <p className="text-white mt-4" style={{ whiteSpace: 'pre-line' }}>{addresses[index % 3]}</p>
-                    
-                    <div 
-                      className={`debt-large-action ${titleColor}`} 
+                    <p className="text-white mt-4" style={{ fontSize: '13px', opacity: 0.8, lineHeight: 1.4 }}>
+                      {loan.vendor || loan.group || 'Personal'}{'\n'}
+                      {currencySymbol}{loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} remaining
+                    </p>
+                    <div
+                      className="debt-large-action text-white"
                       onClick={(e) => { e.stopPropagation(); navigate(`/loan/${loan.id}`); }}
-                      style={{ cursor: 'pointer', display: 'inline-flex' }}
+                      style={{ cursor: 'pointer', display: 'inline-flex', marginTop: '20px' }}
                     >
-                      <span>Calculate</span>
+                      <span style={{ fontWeight: '600' }}>View Details</span>
                       <div className="arrow-btn-small" style={{ color: 'black' }}><ArrowUpRight size={16} /></div>
                     </div>
                   </motion.div>
-                  
-                  <motion.div layout="position" className="debt-large-image" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <img src={images[index % 3]} alt="Thumbnail" />
-                  </motion.div>
+
+                  {/* SVG illustration instead of image */}
+                  <div style={{ position: 'absolute', bottom: index < loans.slice(0,3).length - 1 ? '88px' : '24px', right: '16px', pointerEvents: 'none' }}>
+                    {getIllustration(loan.group, loan.type)}
+                  </div>
                 </motion.div>
               );
             }
 
             return (
-              <motion.div 
+              <motion.div
                 layout
-                className={`debt-item-large ${color.bg} overlap-${index}`} 
-                key={loan.id} 
-                onClick={() => setExpandedIndex(index)} 
+                key={loan.id}
+                className={`debt-item-large ${color.bg} overlap-${index}`}
+                onClick={() => setExpandedIndex(index)}
                 style={{ cursor: 'pointer' }}
               >
-                <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div className={`debt-icon ${color.iconBg}`}>
-                    {color.icon}
+                    {getIcon(loan.group)}
                   </div>
-                  <span className={`debt-title ${titleColor}`}>{loan.title}</span>
+                  <div>
+                    <span className="debt-title text-white" style={{ fontSize: '1.1rem' }}>{loan.title}</span>
+                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', marginTop: '2px' }}>
+                      {currencySymbol}{loan.amount.toLocaleString()} · {loan.group || 'Personal'}
+                    </p>
+                  </div>
                 </motion.div>
               </motion.div>
             );
           })
         )}
       </div>
-      <Navigation />
     </motion.div>
   );
 };

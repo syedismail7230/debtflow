@@ -57,6 +57,12 @@
   box-shadow: 0 4px 10px rgba(255,255,255,0.2);
 }
 
+.cal-day.today-ring {
+  box-shadow: 0 0 0 2px var(--color-purple);
+  color: var(--color-purple-light);
+  font-weight: 700;
+}
+
 .cal-day.event::after {
   content: '';
   position: absolute;

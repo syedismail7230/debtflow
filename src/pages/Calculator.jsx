@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Calendar as CalendarIcon, Save } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronDown, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import DatePickerInput from '../components/DatePickerInput';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -15,10 +16,22 @@ const Calculator = () => {
   const [vendor, setVendor] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('borrowed');
-  const [date, setDate] = useState('');
+  const [borrowedDate, setBorrowedDate] = useState('');
+  const [lastDateToClear, setLastDateToClear] = useState('');
   const [reminder, setReminder] = useState(false);
   const [group, setGroup] = useState('Personal');
   const [isSaving, setIsSaving] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const groupRef = useRef(null);
+  const GROUP_OPTIONS = ['Personal', 'Business', 'Family', 'Other'];
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (groupRef.current && !groupRef.current.contains(e.target)) setGroupOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
 
   const handleSave = async () => {
     if (!title || !amount) return alert("Title and Amount are required.");
@@ -31,7 +44,8 @@ const Calculator = () => {
         amount: parseFloat(amount),
         originalAmount: parseFloat(amount),
         type,
-        dateOfPayment: date,
+        borrowedDate,
+        lastDateToClear,
         reminder,
         group,
         createdAt: serverTimestamp()
@@ -97,11 +111,21 @@ const Calculator = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Date of Payment</label>
-          <div className="date-input-wrapper">
-            <CalendarIcon size={20} className="date-icon" />
-            <input type="date" className="form-input with-icon" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
+          <label className="form-label">Borrowed Date</label>
+          <DatePickerInput
+            value={borrowedDate}
+            onChange={setBorrowedDate}
+            placeholder="When was this borrowed?"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Last Date to Clear</label>
+          <DatePickerInput
+            value={lastDateToClear}
+            onChange={setLastDateToClear}
+            placeholder="Deadline to clear this debt"
+          />
         </div>
 
         <div className="form-group row-between">
@@ -114,14 +138,59 @@ const Calculator = () => {
           </div>
         </div>
 
-        <div className="form-group">
+        <div className="form-group" ref={groupRef} style={{ position: 'relative' }}>
           <label className="form-label">Group</label>
-          <select className="form-input" value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option>Personal</option>
-            <option>Business</option>
-            <option>Family</option>
-            <option>Other</option>
-          </select>
+          {/* Custom dropdown trigger */}
+          <div
+            onClick={() => setGroupOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px', borderRadius: '16px',
+              background: 'var(--bg-main)',
+              border: groupOpen ? '1.5px solid var(--color-purple)' : '1.5px solid rgba(255,255,255,0.06)',
+              cursor: 'pointer', transition: 'border 0.2s'
+            }}
+          >
+            <span style={{ color: 'white', fontSize: '15px' }}>{group}</span>
+            <ChevronDown size={18} color="#9e9ea5" style={{ transform: groupOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          </div>
+
+          {/* Dropdown options */}
+          <AnimatePresence>
+            {groupOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                  background: '#1f1f23', borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+                  overflow: 'hidden', zIndex: 50
+                }}
+              >
+                {GROUP_OPTIONS.map(opt => (
+                  <div
+                    key={opt}
+                    onClick={() => { setGroup(opt); setGroupOpen(false); }}
+                    style={{
+                      padding: '14px 18px', cursor: 'pointer',
+                      color: opt === group ? 'white' : 'rgba(255,255,255,0.7)',
+                      background: opt === group ? 'var(--color-purple)' : 'transparent',
+                      fontSize: '15px', fontWeight: opt === group ? '600' : '400',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={e => { if (opt !== group) e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; }}
+                    onMouseLeave={e => { if (opt !== group) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {opt}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

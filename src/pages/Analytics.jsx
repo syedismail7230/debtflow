@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, ArrowUpRight, Menu, Home, Briefcase, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ArrowUpRight, Menu, Home, Briefcase, Download, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -17,6 +17,7 @@ const Analytics = () => {
   const [chartData, setChartData] = useState([]);
   const [activeTab, setActiveTab] = useState('Transactions');
   const [allLoans, setAllLoans] = useState([]);
+  const [showPrioritySheet, setShowPrioritySheet] = useState(false);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -111,7 +112,7 @@ const Analytics = () => {
       <h1 className="analytics-title text-white">Analytics</h1>
 
       <div className="analytics-cards-row">
-        <div className="analytics-card bg-purple">
+        <div className="analytics-card bg-purple" style={{ cursor: 'pointer' }} onClick={() => navigate('/debts')}>
           <div className="flex-between">
             <span className="analytics-card-label text-white">Total Loan<br/>Amount</span>
             <div className="black-arrow-btn">
@@ -121,14 +122,14 @@ const Analytics = () => {
           <span className="analytics-card-value text-white">{currencySymbol}{totalDebt > 0 ? totalDebt.toLocaleString() : '37,270'}</span>
         </div>
 
-        <div className="analytics-card bg-green">
+        <div className="analytics-card bg-green" style={{ cursor: 'pointer' }} onClick={() => setShowPrioritySheet(true)}>
           <div className="flex-between">
-            <span className="analytics-card-label text-black">Monthly<br/>Payment (EMI)</span>
+            <span className="analytics-card-label text-black">Pending<br/>Dues</span>
             <div className="black-arrow-btn">
               <ArrowUpRight size={14} color="white" />
             </div>
           </div>
-          <span className="analytics-card-value text-black">{currencySymbol}240.98</span>
+          <span className="analytics-card-value text-black">{allLoans.filter(l => l.amount > 0).length} Active</span>
         </div>
       </div>
 
@@ -209,6 +210,88 @@ const Analytics = () => {
           ))
         )}
       </div>
+
+      <AnimatePresence>
+        {showPrioritySheet && (() => {
+          const today = new Date();
+          const prioritized = allLoans
+            .filter(l => l.amount > 0)
+            .map(l => {
+              const dueDate = l.lastDateToClear || l.dateOfPayment;
+              let daysLeft = Infinity;
+              if (dueDate) {
+                daysLeft = Math.ceil((new Date(dueDate) - today) / (1000 * 60 * 60 * 24));
+              }
+              return { ...l, daysLeft };
+            })
+            .sort((a, b) => {
+              if (a.daysLeft === Infinity && b.daysLeft === Infinity) return b.amount - a.amount;
+              if (a.daysLeft === Infinity) return 1;
+              if (b.daysLeft === Infinity) return -1;
+              return a.daysLeft - b.daysLeft;
+            });
+
+          return (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
+                onClick={() => setShowPrioritySheet(false)}
+              />
+              <motion.div
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{
+                  position: 'fixed', bottom: 0, left: 0, right: 0,
+                  maxWidth: '480px', margin: '0 auto',
+                  background: 'var(--bg-card)', borderRadius: '32px 32px 0 0',
+                  padding: '12px 24px 40px', zIndex: 50, maxHeight: '80vh', overflowY: 'auto'
+                }}
+              >
+                <div style={{ width: '40px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)', margin: '0 auto 20px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ color: 'white', fontWeight: '700', fontSize: '1.2rem' }}>⚡ Pending Dues</h3>
+                  <button onClick={() => setShowPrioritySheet(false)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', display: 'flex' }}>
+                    <X size={18} color="white" />
+                  </button>
+                </div>
+                {prioritized.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>🎉 No pending dues!</p>
+                ) : (
+                  prioritized.map((loan, i) => {
+                    const isOverdue = loan.daysLeft <= 0 && loan.daysLeft !== Infinity;
+                    const isUrgent = loan.daysLeft <= 7 && loan.daysLeft > 0;
+                    const badgeColor = isOverdue ? '#ef4444' : isUrgent ? '#f97316' : '#8b5cf6';
+                    const badge = isOverdue ? `Overdue ${Math.abs(loan.daysLeft)}d` : loan.daysLeft === Infinity ? 'No deadline' : `${loan.daysLeft}d left`;
+                    return (
+                      <div
+                        key={loan.id}
+                        onClick={() => { setShowPrioritySheet(false); navigate(`/loan/${loan.id}`); }}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '14px 16px', background: 'var(--bg-main)', borderRadius: '16px',
+                          marginBottom: '10px', cursor: 'pointer', border: `1px solid ${badgeColor}22`
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: `${badgeColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: badgeColor }}>
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p style={{ color: 'white', fontWeight: '600', fontSize: '14px', marginBottom: '2px' }}>{loan.title}</p>
+                            <span style={{ background: badgeColor, color: 'white', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px' }}>{badge}</span>
+                          </div>
+                        </div>
+                        <p style={{ color: 'white', fontWeight: '800', fontSize: '1rem' }}>{currencySymbol}{loan.amount.toLocaleString()}</p>
+                      </div>
+                    );
+                  })
+                )}
+              </motion.div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
     </motion.div>
   );
 };

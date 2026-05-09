@@ -34,8 +34,3 @@
 .nav-item.active {
   opacity: 1;
 }
-
-.nav-label {
-  font-size: 12px;
-  font-weight: 600;
-}
