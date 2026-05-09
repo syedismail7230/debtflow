@@ -109,3 +109,6 @@
 .text-md { font-size: 15px; }
 .justify-between { justify-content: space-between; }
 .w-full { width: 100%; }
+.text-green { color: var(--color-green); }
+.text-red { color: var(--color-red); }
+.text-purple { color: var(--color-purple-light); }

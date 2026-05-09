@@ -11,7 +11,7 @@ const LoanCalendar = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(14);
 
-  const { currentUser } = useAuth();
+  const { currentUser, currencySymbol } = useAuth();
   const [upcomingPayments, setUpcomingPayments] = useState([]);
 
   React.useEffect(() => {
@@ -26,13 +26,14 @@ const LoanCalendar = () => {
           const dateParts = data.dateOfPayment.split('-');
           if (dateParts.length === 3) {
             const day = parseInt(dateParts[2], 10);
+            const isCleared = data.amount <= 0;
             fetched.push({
               id: doc.id,
               date: day,
               title: data.title,
               vendor: data.vendor || 'Unknown',
-              amount: `$${data.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-              status: 'Upcoming',
+              amount: `${currencySymbol}${data.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+              status: isCleared ? 'Cleared' : 'Upcoming',
               type: data.group ? data.group.toLowerCase() : 'other'
             });
           }
@@ -62,7 +63,9 @@ const LoanCalendar = () => {
     return days;
   };
 
-  const selectedPayments = upcomingPayments.filter(p => p.date === selectedDate);
+  const selectedPayments = selectedDate === null 
+    ? [...upcomingPayments].sort((a,b) => a.date - b.date) 
+    : upcomingPayments.filter(p => p.date === selectedDate);
 
   return (
     <motion.div 
@@ -104,7 +107,17 @@ const LoanCalendar = () => {
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-white font-semibold text-lg">Schedule for Dec {selectedDate}</h3>
+        <h3 className="text-white font-semibold text-lg">
+          {selectedDate ? `Schedule for Dec ${selectedDate}` : 'All Upcoming Payments'}
+        </h3>
+        {selectedDate && (
+          <span 
+            className="text-purple cursor-pointer text-sm font-semibold" 
+            onClick={() => setSelectedDate(null)}
+          >
+            See All
+          </span>
+        )}
       </div>
 
       <div className="schedule-list">
@@ -123,7 +136,7 @@ const LoanCalendar = () => {
                 </div>
                 <div className="text-right">
                   <h4 className="text-white font-bold text-lg">{payment.amount}</h4>
-                  <p className={`text-xs font-semibold ${payment.status === 'Due Today' ? 'text-red' : 'text-green'}`}>{payment.status}</p>
+                  <p className={`text-xs font-semibold ${payment.status === 'Due Today' ? 'text-red' : payment.status === 'Cleared' ? 'text-purple' : 'text-green'}`}>{payment.status}</p>
                 </div>
               </div>
             </div>

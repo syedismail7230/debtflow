@@ -13,7 +13,8 @@
 
 .nav-items {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 120px;
   align-items: center;
   position: relative;
   pointer-events: auto;
@@ -37,23 +38,4 @@
 .nav-label {
   font-size: 12px;
   font-weight: 600;
-}
-
-.nav-item-primary {
-  background-color: #1a1a1e;
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transform: translateY(-8px);
-  box-shadow: 0 0 35px rgba(139, 92, 246, 0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.nav-item-primary:active {
-  transform: translateY(-6px);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
 }

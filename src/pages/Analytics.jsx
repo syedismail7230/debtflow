@@ -10,11 +10,13 @@ import './Analytics.css';
 
 const Analytics = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, currencySymbol } = useAuth();
   
   const [totalDebt, setTotalDebt] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const [activeTab, setActiveTab] = useState('Transactions');
+  const [allLoans, setAllLoans] = useState([]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -33,6 +35,7 @@ const Analytics = () => {
         }
       });
       setTotalDebt(total);
+      setAllLoans(fetchedLoans);
 
       const txQ = query(collection(db, 'transactions'), where('userId', '==', currentUser.uid));
       const txQs = await getDocs(txQ);
@@ -98,7 +101,7 @@ const Analytics = () => {
         </button>
         <div className="text-center">
           <p className="analytics-header-title">Current Balance</p>
-          <p className="analytics-header-sub text-white" style={{ fontSize: '1.2rem' }}>${totalDebt > 0 ? totalDebt.toLocaleString() : '5552.66'}</p>
+          <p className="analytics-header-sub text-white" style={{ fontSize: '1.2rem' }}>{currencySymbol}{totalDebt > 0 ? totalDebt.toLocaleString() : '5552.66'}</p>
         </div>
         <button className="icon-btn-dark">
           <Menu size={24} />
@@ -115,7 +118,7 @@ const Analytics = () => {
               <ArrowUpRight size={14} color="white" />
             </div>
           </div>
-          <span className="analytics-card-value text-white">${totalDebt > 0 ? totalDebt.toLocaleString() : '37,270'}</span>
+          <span className="analytics-card-value text-white">{currencySymbol}{totalDebt > 0 ? totalDebt.toLocaleString() : '37,270'}</span>
         </div>
 
         <div className="analytics-card bg-green">
@@ -125,7 +128,7 @@ const Analytics = () => {
               <ArrowUpRight size={14} color="white" />
             </div>
           </div>
-          <span className="analytics-card-value text-black">$240.98</span>
+          <span className="analytics-card-value text-black">{currencySymbol}240.98</span>
         </div>
       </div>
 
@@ -152,27 +155,59 @@ const Analytics = () => {
         </div>
       </div>
 
-      <div className="transactions-header mt-8">
-        <h3>Transactions</h3>
+      <div className="flex justify-between items-center mt-8 mb-4">
+        <div className="flex gap-6">
+          <h3 
+            className={`cursor-pointer ${activeTab === 'Transactions' ? 'text-white' : 'text-muted'} font-semibold`} 
+            onClick={() => setActiveTab('Transactions')}
+          >
+            Transactions
+          </h3>
+          <h3 
+            className={`cursor-pointer ${activeTab === 'Loans' ? 'text-white' : 'text-muted'} font-semibold`} 
+            onClick={() => setActiveTab('Loans')}
+          >
+            Loans
+          </h3>
+        </div>
       </div>
       
       <div className="transactions-container">
-        {recentTransactions.map(tx => (
-          <div className="tx-item" key={tx.id}>
-            <div className="flex-row">
-              <div className="tx-icon">
-                {tx.icon}
+        {activeTab === 'Transactions' ? (
+          recentTransactions.map(tx => (
+            <div className="tx-item" key={tx.id}>
+              <div className="flex-row">
+                <div className="tx-icon">
+                  {tx.icon}
+                </div>
+                <div>
+                  <p className="tx-title">{tx.title}</p>
+                  <p className="tx-sub">{tx.sub}</p>
+                </div>
               </div>
-              <div>
-                <p className="tx-title">{tx.title}</p>
-                <p className="tx-sub">{tx.sub}</p>
-              </div>
+              <span className={`tx-amount ${tx.type === 'repay' ? 'text-red' : 'text-green'}`}>
+                {tx.type === 'repay' ? '-' : '+'}{currencySymbol}{tx.amount.toLocaleString()}
+              </span>
             </div>
-            <span className={`tx-amount ${tx.type === 'repay' ? 'text-red' : 'text-green'}`}>
-              {tx.type === 'repay' ? '-' : '+'}${tx.amount.toLocaleString()}
-            </span>
-          </div>
-        ))}
+          ))
+        ) : (
+          allLoans.map(loan => (
+            <div className="tx-item" key={loan.id} onClick={() => navigate(`/loan/${loan.id}`)} style={{ cursor: 'pointer' }}>
+              <div className="flex-row">
+                <div className="tx-icon">
+                  <Briefcase size={24} color="#3b0764" />
+                </div>
+                <div>
+                  <p className="tx-title">{loan.title}</p>
+                  <p className="tx-sub">{loan.group || 'Personal'}</p>
+                </div>
+              </div>
+              <span className="tx-amount text-white font-semibold">
+                {currencySymbol}{loan.amount.toLocaleString()}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </motion.div>
   );

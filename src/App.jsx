@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import LoanCalendar from './pages/LoanCalendar';
 import LoanProfile from './pages/LoanProfile';
 import Auth from './pages/Auth';
+import Celebration from './pages/Celebration';
 
 const PrivateRoute = ({ children }) => {
   const { currentUser } = useAuth();
@@ -50,6 +51,7 @@ function AppContent() {
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/calendar" element={<PrivateRoute><LoanCalendar /></PrivateRoute>} />
           <Route path="/loan/:id" element={<PrivateRoute><LoanProfile /></PrivateRoute>} />
+          <Route path="/celebration" element={<PrivateRoute><Celebration /></PrivateRoute>} />
         </Routes>
       </AnimatePresence>
     </div>

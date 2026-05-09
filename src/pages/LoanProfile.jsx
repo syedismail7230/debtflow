@@ -10,7 +10,7 @@ import './LoanProfile.css';
 const LoanProfile = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, currencySymbol } = useAuth();
   
   const [loan, setLoan] = useState(null);
   const [history, setHistory] = useState([]);
@@ -60,12 +60,15 @@ const LoanProfile = () => {
       });
 
       const newBalance = loan.amount - amt;
-      await updateDoc(doc(db, 'loans', id), { amount: newBalance });
+      await updateDoc(doc(db, 'loans', id), { amount: Math.max(0, newBalance) });
 
-      await fetchLoanData();
-      
-      setShowPartialModal(false);
-      setPartialAmount('');
+      if (newBalance <= 0) {
+        navigate('/celebration', { state: { loanName: loan.title } });
+      } else {
+        await fetchLoanData();
+        setShowPartialModal(false);
+        setPartialAmount('');
+      }
     } catch (err) {
       console.error(err);
       alert('Failed to process payment');
@@ -100,7 +103,7 @@ const LoanProfile = () => {
       <div className="loan-merged-card mb-8">
         <div className="loan-profile-top bg-pattern">
           <div className="loan-badge">{loan.type === 'borrowed' ? 'I borrowed' : 'I lent'}</div>
-          <h1 className="loan-huge-amount">${loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h1>
+          <h1 className="loan-huge-amount">{currencySymbol}{loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h1>
           
           <div className="loan-actions-row">
             <div className="action-circle-group">
@@ -170,7 +173,7 @@ const LoanProfile = () => {
                 </div>
               </div>
               <span className={`history-amount font-semibold ${item.type === 'repay' ? 'text-green' : 'text-red'}`}>
-                {item.type === 'repay' ? '-' : '+'}${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {item.type === 'repay' ? '-' : '+'}{currencySymbol}{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </div>
           ))
@@ -196,10 +199,10 @@ const LoanProfile = () => {
                   <X size={20} color="white" />
                 </button>
               </div>
-              <p className="text-muted text-sm mb-6">Enter the amount you wish to repay towards your ${loan.amount.toLocaleString()} balance.</p>
+              <p className="text-muted text-sm mb-6">Enter the amount you wish to repay towards your {currencySymbol}{loan.amount.toLocaleString()} balance.</p>
               
               <div className="amount-input-wrapper mb-6">
-                <span className="currency-symbol">$</span>
+                <span className="currency-symbol">{currencySymbol}</span>
                 <input 
                   type="number" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)}
                   placeholder="0.00" className="payment-amount-input" autoFocus

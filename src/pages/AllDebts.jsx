@@ -9,7 +9,7 @@ import './AllDebts.css';
 
 const AllDebts = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, currencySymbol } = useAuth();
   const [debts, setDebts] = useState([]);
   const [totalBorrowed, setTotalBorrowed] = useState(0);
   const [totalLent, setTotalLent] = useState(0);
@@ -24,9 +24,11 @@ const AllDebts = () => {
       let lent = 0;
       querySnapshot.forEach(doc => {
         const data = doc.data();
-        fetched.push({ id: doc.id, ...data });
-        if (data.type === 'borrowed') borrowed += data.amount;
-        if (data.type === 'lent') lent += data.amount;
+        if (data.amount > 0) {
+          fetched.push({ id: doc.id, ...data });
+          if (data.type === 'borrowed') borrowed += data.amount;
+          if (data.type === 'lent') lent += data.amount;
+        }
       });
       setDebts(fetched);
       setTotalBorrowed(borrowed);
@@ -58,11 +60,11 @@ const AllDebts = () => {
       <div className="stats-row mb-8">
         <div className="stat-card bg-purple-glass text-center">
           <p className="stat-label text-white opacity-80">Total Borrowed</p>
-          <p className="stat-value text-purple-light">${totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="stat-value text-purple-light">{currencySymbol}{totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="stat-card bg-green-glass text-center">
           <p className="stat-label text-white opacity-80">Total Lent</p>
-          <p className="stat-value text-green-light">${totalLent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="stat-value text-green-light">{currencySymbol}{totalLent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
 
@@ -82,7 +84,7 @@ const AllDebts = () => {
                 <p className="all-debt-sub">{debt.group || 'Personal'}</p>
               </div>
               <div className="text-right">
-                <p className="all-debt-amount">${debt.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="all-debt-amount">{currencySymbol}{debt.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="all-debt-sub">{debt.dateOfPayment || 'No due date'}</p>
               </div>
             </div>

@@ -9,7 +9,7 @@ import './Calculator.css';
 
 const Calculator = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, currencySymbol } = useAuth();
 
   const [title, setTitle] = useState('');
   const [vendor, setVendor] = useState('');
@@ -63,7 +63,7 @@ const Calculator = () => {
       </div>
 
       <div className="calc-amount-section">
-        <span className="currency-symbol text-white">$</span>
+        <span className="currency-symbol text-white">{currencySymbol}</span>
         <input 
           type="number" 
           value={amount}
