@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import useRazorpay from '../hooks/useRazorpay';
 import './LoanProfile.css';
 
 const LoanProfile = () => {
@@ -20,7 +19,6 @@ const LoanProfile = () => {
   const [partialAmount, setPartialAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState('');
-  const openRazorpay = useRazorpay();
 
   const fetchLoanData = async () => {
     if (!currentUser || !id) return;
@@ -51,14 +49,13 @@ const LoanProfile = () => {
     fetchLoanData();
   }, [id, currentUser]);
 
-  const recordTransaction = async (amt, razorpayId = null) => {
+  const recordTransaction = async (amt) => {
     await addDoc(collection(db, 'transactions'), {
       loanId: id,
       userId: currentUser.uid,
       amount: amt,
       type: borrowMode ? 'borrow' : 'repay',
-      title: borrowMode ? 'Borrowed more' : 'Repayment via Razorpay',
-      razorpayPaymentId: razorpayId || null,
+      title: borrowMode ? 'Borrowed more' : 'Repayment recorded',
       date: new Date().toLocaleDateString(),
       createdAt: new Date()
     });
@@ -76,52 +73,23 @@ const LoanProfile = () => {
     if (!amt || amt <= 0) return setPaymentError('Please enter a valid amount greater than 0.');
     setPaymentError('');
 
-    if (borrowMode) {
-      // Borrow more — no payment gateway needed
-      setIsProcessing(true);
-      try {
-        await recordTransaction(amt);
+    setIsProcessing(true);
+    try {
+      const newBalance = await recordTransaction(amt);
+      if (!borrowMode && newBalance <= 0) {
+        navigate('/celebration', { state: { loanName: loan.title } });
+      } else {
         await fetchLoanData();
         setShowPartialModal(false);
         setPartialAmount('');
         setBorrowMode(false);
-      } catch (err) {
-        console.error(err);
-        setPaymentError('Failed to record. Try again.');
-      } finally {
-        setIsProcessing(false);
       }
-      return;
+    } catch (err) {
+      console.error(err);
+      setPaymentError('Failed to record transaction. Try again.');
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Repayment — go through Razorpay
-    openRazorpay({
-      amount: amt,
-      loanTitle: loan.title,
-      userName: currentUser.displayName || '',
-      userEmail: currentUser.email || '',
-      onSuccess: async (razorpayId) => {
-        setIsProcessing(true);
-        try {
-          const newBalance = await recordTransaction(amt, razorpayId);
-          if (newBalance <= 0) {
-            navigate('/celebration', { state: { loanName: loan.title } });
-          } else {
-            await fetchLoanData();
-            setShowPartialModal(false);
-            setPartialAmount('');
-          }
-        } catch (err) {
-          console.error(err);
-          setPaymentError('Payment received but failed to update. Contact support.');
-        } finally {
-          setIsProcessing(false);
-        }
-      },
-      onFailure: (reason) => {
-        setPaymentError(`Payment failed: ${reason}`);
-      }
-    });
   };
 
   if (!loan) {
@@ -275,13 +243,8 @@ const LoanProfile = () => {
                 className={`confirm-payment-btn ${partialAmount ? 'active' : ''}`}
                 onClick={handleConfirmPayment} disabled={!partialAmount || isProcessing}
               >
-                {isProcessing ? 'Processing...' : borrowMode ? 'Confirm Borrow' : '🔒 Pay via Razorpay'}
+                {isProcessing ? 'Processing...' : borrowMode ? 'Confirm Borrow' : 'Confirm Repayment'}
               </button>
-              {!borrowMode && (
-                <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px' }}>
-                  Secured by Razorpay · 256-bit SSL
-                </p>
-              )}
             </motion.div>
           </>
         )}
