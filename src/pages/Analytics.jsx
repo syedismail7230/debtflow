@@ -70,20 +70,14 @@ const Analytics = () => {
       }
       setChartData(dynamicChartData);
 
-      // Set recent transactions
-      if (txs.length === 0) {
-        setRecentTransactions([
-          { id: 1, title: 'Home Loan', sub: '5 Emi Paid', amount: 500, type: 'repay', icon: <Home size={24} color="#3b0764" /> },
-          { id: 2, title: 'Business Loan', sub: 'Down Payment', amount: 4000, type: 'repay', icon: <Briefcase size={24} color="#3b0764" /> },
-          { id: 3, title: 'Topup Balance', sub: 'Via Internet Banking', amount: 2000, type: 'borrow', icon: <Download size={24} color="#3b0764" /> }
-        ]);
-      } else {
-        setRecentTransactions(txs.slice(0, 5).map(tx => ({
-          ...tx,
-          icon: tx.type === 'repay' ? <Home size={24} color="#3b0764" /> : <Download size={24} color="#3b0764" />,
-          sub: tx.date
-        })));
-      }
+      // Set transactions — real data only, no mocks
+      setRecentTransactions(txs.map(tx => ({
+        ...tx,
+        icon: tx.type === 'repay'
+          ? <Home size={24} color="#3b0764" />
+          : <Download size={24} color="#3b0764" />,
+        sub: tx.date || (tx.createdAt?.toDate?.()?.toLocaleDateString?.() ?? 'Unknown date')
+      })));
     };
     fetchAnalytics();
   }, [currentUser]);
@@ -170,12 +164,27 @@ const Analytics = () => {
           >
             Loans
           </h3>
+          {activeTab === 'Transactions' && (
+            <span
+              className="see-all"
+              style={{ marginLeft: 'auto', fontSize: '13px', cursor: 'pointer' }}
+              onClick={() => navigate('/transactions')}
+            >
+              See All
+            </span>
+          )}
         </div>
       </div>
       
       <div className="transactions-container">
         {activeTab === 'Transactions' ? (
-          recentTransactions.map(tx => (
+          recentTransactions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: '32px', marginBottom: '12px' }}>📭</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No payments recorded yet</p>
+            </div>
+          ) : (
+          recentTransactions.slice(0, 5).map(tx => (
             <div className="tx-item" key={tx.id}>
               <div className="flex-row">
                 <div className="tx-icon">
@@ -191,6 +200,7 @@ const Analytics = () => {
               </span>
             </div>
           ))
+          )
         ) : (
           allLoans.map(loan => (
             <div className="tx-item" key={loan.id} onClick={() => navigate(`/loan/${loan.id}`)} style={{ cursor: 'pointer' }}>
